@@ -126,7 +126,7 @@ def programme_principale():
                     id = input("ID de l'etudiant:")
                     cour = input("nom du cours :")
                     try:
-                        note = float(input("Note obtenu au cours :"))
+                        note = float(input(" Note obtenu au cours :"))
                     except Exception as e:
                         print("-" * 20, "\n la note doit être un nombre !")
                         print(e)
