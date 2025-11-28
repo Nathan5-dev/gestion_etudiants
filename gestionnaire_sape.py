@@ -1,13 +1,12 @@
 
 class Etudiant:
-    def __init__(self,id,nom,notes):
+    def __init__(self,id,nom,Type,notes):
         self.id=id
         self.nom=nom
+        self.Type= Type
         self.notes=notes
 
-    def calculer_moyenne(self, notes:list):
-        moyenne = sum(note for cours,note in notes)/len(notes)
-        return moyenne
+
 
     def __str__(self,id, nom ,notes: list):
         print("-" * 34)
@@ -17,34 +16,53 @@ class Etudiant:
         print(f"|{self.notes:<5}|{self.nom:^15}|{self.moyenne :^10.2f}|")
         print("-" * 34)
 
+class EtudiantMaster(Etudiant):
+
+    def calculer_moyenne(self, notes:list):
+        moyenne = sum(note for c,note in notes)/len(notes)
+        if moyenne >=12:
+            return moyenne
+        else:
+            return 0.0
+
+
 
 BASE_DONNEES_ETUDIANTS = [
-    Etudiant("E001","Nathan cirhuza",[
-             ("Algo", 18),
-             ("Anglais", 17),
+    Etudiant("E001", "Nathan cirhuza","under graduate", [
+        ("Algo", 18),
+        ("Anglais", 17),
              ("Algebre", 19)
          ]),
-    Etudiant("E002", "Ghislain cirhuza", [
+    Etudiant("E002", "Ghislain cirhuza","under graduate", [
         ("Algo", 14),
         ("Anglais", 15),
         ("Algebre", 10)
     ]),
-    Etudiant("E003", "Joseph", [
+    Etudiant("E003", "Joseph","under graduate",[
         ("Algo", 12),
         ("Anglais", 10),
         ("Algebre", 9)
     ]),
-    Etudiant("E004", "Matin", [
+    Etudiant("E004", "Matin","", [
         ("Algo", 10),
         ("Anglais", 15),
         ("Algebre", 13)
-    ]),
-    Etudiant("E005", "Jean", [
+    ], ),
+    Etudiant("E005", "Jean", "under graduate", [
         ("Algo", 17),
+        ("Anglais", 15),
+        ("Algebre", 12)
+    ]),
+    EtudiantMaster("E006", "Fabrice", "master", [
+        ("Algo", 16),
         ("Anglais", 11),
         ("Algebre", 12)
-    ])
-
+    ], ),
+    EtudiantMaster("E007", "Joseph", "master", [
+        ("Algo", 10),
+        ("Anglais", 12),
+        ("Algebre", 11)
+    ], ),
 ]
 
 
@@ -54,6 +72,7 @@ def trouver_etudiant(ID):
     for etudiant in BASE_DONNEES_ETUDIANTS:
         if  ID == etudiant.id:
             print(f"|| ID :{etudiant.id} ")
+            print(f"|| Type : {etudiant.Type}")
             print(f"|| Nom : {etudiant.nom}")
             print("_" * 32)
             print(f"|{"Cours":^15}|{"note":^15}|")
