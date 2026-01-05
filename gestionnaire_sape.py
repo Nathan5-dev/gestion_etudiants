@@ -1,6 +1,8 @@
 
-import  json
-from sape_s1 import BASE_DONNEES_ETUDIANTS
+import json
+
+# Variable globale pour stocker les étudiants
+BASE_DONNEES_ETUDIANTS = []
 
 class Etudiant:
     def __init__(self,id,nom,Type,notes):
@@ -15,11 +17,21 @@ class Etudiant:
         else:
             return f" Etudiant ({self.id},{self.nom},{self.Type},{self.notes})"
 
+    def calculer_moyenne(self):
+        """Calcule la moyenne des notes de l'étudiant"""
+        if not self.notes:
+            return 0.0
+        return sum(note for c, note in self.notes) / len(self.notes)
+
+
 class EtudiantMaster(Etudiant):
 
-    def calculer_moyenne(self, notes:list):
-        moyenne = sum(note for c,note in notes)/len(notes)
-        if moyenne >=12:
+    def calculer_moyenne(self):
+        """Pour les masters, la moyenne doit être >= 12 sinon 0"""
+        if not self.notes:
+            return 0.0
+        moyenne = sum(note for c, note in self.notes) / len(self.notes)
+        if moyenne >= 12:
             return moyenne
         else:
             return 0.0
@@ -47,19 +59,24 @@ def exporter_en_json(etudiants :list,nom_fichier):
             'id':e.id,
             'nom':e.nom,
             'Type':e.Type,
-            'notes': e.notes
+            'notes': list(e.notes)
         }
         liste_etudiants.append(d)
     with open(nom_fichier,"w",encoding="utf-8") as f:
         json.dump(liste_etudiants,f,indent=2)
 
 
+def charger_donnees(nom_fichier):
+    """Charge les données et initialise BASE_DONNEES_ETUDIANTS"""
+    global BASE_DONNEES_ETUDIANTS
+    BASE_DONNEES_ETUDIANTS = importer_donnees(nom_fichier)
+    return BASE_DONNEES_ETUDIANTS
+
 
 #fonction pour afficher toutes les informations d'un etudiant
 def trouver_etudiant(ID):
     trouve = False
     for etudiant in BASE_DONNEES_ETUDIANTS:
-        print(etudiant.id)
         if  ID == etudiant.id:
             print(f"|| ID :{etudiant.id} ")
             print(f"|| Type : {etudiant.Type}")
@@ -125,10 +142,14 @@ def programme_principale():
 
             elif choix == 2:
                 ID = input(" Donne l'Id de l'etudiant :")
+                trouve = False
                 for etudiant in BASE_DONNEES_ETUDIANTS:
                     if etudiant.id == ID:
+                        trouve = True
                         print(f"|| Etudiant : {etudiant.nom}")
-                        print(f"|| Moyenne : {etudiant.calculer_moyenne(etudiant.notes)}")
+                        print(f"|| Moyenne : {etudiant.calculer_moyenne():.2f}")
+                if not trouve:
+                    print(f"Aucun étudiant trouvé avec l'ID {ID}")
             elif choix == 3:
                 print(" Donnez les informations :")
                 while True:
