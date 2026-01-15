@@ -1,4 +1,5 @@
 
+
 import json
 
 # Variable globale pour stocker les étudiants

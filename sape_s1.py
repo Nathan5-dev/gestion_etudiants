@@ -1,4 +1,4 @@
-from Analyse_performances_etudiants.gestionnaire_sape import charger_donnees, programme_principale
+from performances_etudiants.gestionnaire_sape import charger_donnees, programme_principale
 
 
 
