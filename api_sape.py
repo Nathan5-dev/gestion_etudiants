@@ -1,11 +1,9 @@
 
-import json
-
 from fastapi import FastAPI, HTTPException, status, Depends, APIRouter
 from sqlmodel import SQLModel, Session,select
-from database import  moteur, Etudiants, Notes, get_session, Utilisateur
+from database import  Etudiants, Notes, get_session, Utilisateur
 from schemas import NoteCreate, NoteRead,EtudiantRead,EtudiantCreate, NoteUpdate, UtilisateurCreate,UtilisateurRead
-from contextlib import asynccontextmanager
+
 from typing import List, Optional, Union, Dict
 from  auth import( hash_password, verifier_password, creer_acces_token,
                    TOKEN_EXPIRE_MUNITES, dependence_OAuth2, SECRET_KEY, ALGORITHM)
@@ -14,29 +12,18 @@ from datetime import  timedelta
 from jose import  JWTError, jwt
 
 
-# routeur = APIRouter()
-
-# with open("donnes.json","r", encoding="utf-8") as f1 :
-#     Etudiants : list = json.load(f1)
-
-@asynccontextmanager
-async def life_span(app: FastAPI):
-    SQLModel.metadata.create_all(moteur)
-    print("Démarrage de l'application ...")
-    yield
-    print("Arrêt de l'application...")
-
-app = FastAPI(lifespan=life_span)
+routeur_etudiant = APIRouter(tags=["Étudiants"])
+routeur_notes= APIRouter(tags=["Notes"])
+routeur_Utilisateur = APIRouter(tags=[" Utilisateurs "])
 
 
-## La fonction de dependence pour retourner un utilisateur apres verification de son ID
-
-erreur = HTTPException(
+erreur = HTTPException(   # erreurs de reference
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=" Token invalide ou expiré ! ",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
+## La fonction de dependence pour retourner un utilisateur apres verification de son ID
 def get_curent_user(token : str = Depends(dependence_OAuth2),
                     session : Session = Depends(get_session)) -> Utilisateur:
     try:
@@ -59,14 +46,14 @@ def get_curent_user(token : str = Depends(dependence_OAuth2),
     return user
 #-------------------------------------------------------
 
-@app.get("/etudiants", response_model=List[EtudiantRead])
+@routeur_etudiant.get("/etudiants", response_model=List[EtudiantRead])
 async def get_all_students( session : Session = Depends(get_session)):
     """ Une route qui permet de récupérer tout les étudiants """
 
     etudiants = session.exec(select(Etudiants)).all()
     return etudiants
 
-@app.get('/etudiant/{etudiant_id}')
+@routeur_etudiant.get('/etudiant/{etudiant_id}')
 async def get_student(
         etudiant_id: int,
         session : Session = Depends(get_session)
@@ -80,7 +67,7 @@ async def get_student(
     return etu
 
 
-@app.post('/etudiant',response_model= EtudiantRead)
+@routeur_etudiant.post('/etudiant',response_model= EtudiantRead)
 async def create_student(
         etudiant: EtudiantCreate,
         session : Session = Depends(get_session)
@@ -94,7 +81,7 @@ async def create_student(
 
     return etu
 
-@app.post('/etudiant/{id_etudiant}/notes', response_model=NoteRead)
+@routeur_notes.post('/etudiant/{id_etudiant}/notes', response_model=NoteRead)
 async def create_note(id_etudiant: int,
                       etudiant_note: NoteCreate,
                       connexion : Session = Depends(get_session),
@@ -118,7 +105,7 @@ async def create_note(id_etudiant: int,
     return note
 
 
-@app.get('/notes', response_model=List[NoteRead])
+@routeur_notes.get('/notes', response_model=List[NoteRead])
 async def get_notes(session: Session = Depends(get_session)):
 
     """ Une route qui retourne toutes les notes """
@@ -126,7 +113,7 @@ async def get_notes(session: Session = Depends(get_session)):
     notes =  session.exec(requete).all()
     return notes
 
-@app.get('/notes/{etudiant_id}', response_model=Union[List[NoteRead], Dict])
+@routeur_notes.get('/notes/{etudiant_id}', response_model=Union[List[NoteRead], Dict])
 async def get_etudiant_notes(
         etudiant_id : int,
         conn : Session = (Depends(get_session))
@@ -142,7 +129,7 @@ async def get_etudiant_notes(
     return notes
 
 
-@app.get('/moyenne/{etudiant_id}')
+@routeur_etudiant.get('/moyenne/{etudiant_id}')
 async def get_moyenne( etudiant_id : int,
                     session : Session = Depends(get_session)) -> Dict:
     """ Route pour retourner la moyenne d'un étudiant via son Id """
@@ -171,7 +158,7 @@ async def get_moyenne( etudiant_id : int,
             }
 
 
-@app.patch('/note/{note_id}', response_model=NoteRead)
+@routeur_notes.patch('/note/{note_id}', response_model=NoteRead)
 async def update_note(note_id : int,
                       note_data : NoteUpdate,
                       session : Session = Depends(get_session),
@@ -193,7 +180,7 @@ async def update_note(note_id : int,
     return note
 
 
-@app.post('/auth/register',
+@routeur_Utilisateur.post('/auth/register',
           response_model=UtilisateurRead,
           status_code=status.HTTP_201_CREATED)
 async def inscription_utilisateur(user_data : UtilisateurCreate,
@@ -218,7 +205,7 @@ async def inscription_utilisateur(user_data : UtilisateurCreate,
 
     return user
 
-@app.get('/users', response_model= List[UtilisateurRead])
+@routeur_Utilisateur.get('/users', response_model= List[UtilisateurRead])
 async  def get_utilisateurs(connexion : Session = Depends(get_session),
                             current_user : Utilisateur=Depends(get_curent_user)) :
     """ retourne tous les utilisateurs """
@@ -226,7 +213,7 @@ async  def get_utilisateurs(connexion : Session = Depends(get_session),
     utilisateurs = connexion.exec(select(Utilisateur)).all()
     return utilisateurs
 
-@app.post('/login')
+@routeur_Utilisateur.post('/login')
 async def login_fonction(
         form_donnes : OAuth2PasswordRequestForm = Depends(),
         session : Session = Depends(get_session)) -> dict :
