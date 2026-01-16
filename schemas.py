@@ -34,3 +34,14 @@ class NoteUpdate(SQLModel):
     categorie: Optional[str]= None
     credit : Optional[int] = None
     valeur : Optional[float] = Field(default=None, ge=0, le=20)
+
+class UtilisateurCreate(SQLModel):
+    username : str
+    password : str
+
+
+class UtilisateurRead(SQLModel):
+    id : int
+    # password_hash : str
+    username : str
+

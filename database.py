@@ -13,13 +13,9 @@ moteur = create_engine(
 )
 
 
-
 def get_session():
     with Session(moteur) as session :
         yield session
-
-
-
 
 class Etudiants(SQLModel, table = True):
     id : Optional[int] = Field( default=None, primary_key=True )
@@ -43,6 +39,11 @@ class Notes(SQLModel, table = True):
     )
 
     etudiant : Optional["Etudiants"] = Relationship(back_populates='notes')
+
+class Utilisateur(SQLModel, table = True):
+    id : Optional[int] = Field(default=None, primary_key=True)
+    username : str = Field(index=True, unique=True)
+    password_hash : str
 
 
 

@@ -1,14 +1,20 @@
 
 import json
 
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, APIRouter
 from sqlmodel import SQLModel, Session,select
-from database import  moteur, Etudiants, Notes, get_session
-from schemas import NoteCreate, NoteRead,EtudiantRead,EtudiantCreate, NoteUpdate
+from database import  moteur, Etudiants, Notes, get_session, Utilisateur
+from schemas import NoteCreate, NoteRead,EtudiantRead,EtudiantCreate, NoteUpdate, UtilisateurCreate,UtilisateurRead
 from contextlib import asynccontextmanager
 from typing import List, Optional, Union, Dict
+from  auth import( hash_password, verifier_password, creer_acces_token,
+                   TOKEN_EXPIRE_MUNITES, dependence_OAuth2, SECRET_KEY, ALGORITHM)
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import  timedelta
+from jose import  JWTError, jwt
 
 
+# routeur = APIRouter()
 
 # with open("donnes.json","r", encoding="utf-8") as f1 :
 #     Etudiants : list = json.load(f1)
@@ -23,6 +29,35 @@ async def life_span(app: FastAPI):
 app = FastAPI(lifespan=life_span)
 
 
+## La fonction de dependence pour retourner un utilisateur apres verification de son ID
+
+erreur = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=" Token invalide ou expiré ! ",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+def get_curent_user(token : str = Depends(dependence_OAuth2),
+                    session : Session = Depends(get_session)) -> Utilisateur:
+    try:
+        playload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=ALGORITHM
+        )
+        id_utilisaeur : str | None = playload.get("sub")
+        if not id_utilisaeur :
+            raise erreur
+
+    except JWTError :
+        raise erreur
+
+    requete = select(Utilisateur).where(Utilisateur.id == int(id_utilisaeur))
+    user = session.exec(requete).first()
+    if not user:
+        raise erreur
+    return user
+#-------------------------------------------------------
 
 @app.get("/etudiants", response_model=List[EtudiantRead])
 async def get_all_students( session : Session = Depends(get_session)):
@@ -62,8 +97,9 @@ async def create_student(
 @app.post('/etudiant/{id_etudiant}/notes', response_model=NoteRead)
 async def create_note(id_etudiant: int,
                       etudiant_note: NoteCreate,
-                      connexion : Session = Depends(get_session)):
-    """ Une route qui permet d'ajouter  une note pour un étudiant  """
+                      connexion : Session = Depends(get_session),
+                      current_user : Utilisateur=Depends(get_curent_user)):
+    """ Une route qui permet d'ajouter  une note a un étudiant  """
 
     etu = connexion.get(Etudiants, id_etudiant)
     if not etu:
@@ -105,6 +141,7 @@ async def get_etudiant_notes(
         return {'Message': f"L'étudiant avec id : {etudiant_id} n'a pas de note !"}
     return notes
 
+
 @app.get('/moyenne/{etudiant_id}')
 async def get_moyenne( etudiant_id : int,
                     session : Session = Depends(get_session)) -> Dict:
@@ -137,7 +174,8 @@ async def get_moyenne( etudiant_id : int,
 @app.patch('/note/{note_id}', response_model=NoteRead)
 async def update_note(note_id : int,
                       note_data : NoteUpdate,
-                      session : Session = Depends(get_session)):
+                      session : Session = Depends(get_session),
+                      current_user : Utilisateur=Depends(get_curent_user)):
     """ Route pour mettre a jour une note """
 
     note = session.get(Notes, note_id)
@@ -155,8 +193,72 @@ async def update_note(note_id : int,
     return note
 
 
-#
-#
+@app.post('/auth/register',
+          response_model=UtilisateurRead,
+          status_code=status.HTTP_201_CREATED)
+async def inscription_utilisateur(user_data : UtilisateurCreate,
+                                  session : Session = Depends(get_session)):
+    """ Route pour enregistrer un nouvel utilisateur ! """
+
+    requete = select(Utilisateur).where(Utilisateur.username == user_data.username)
+    user_exist  = session.exec(requete).first()
+
+    if  user_exist:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail=" Non d'utilisateur deja utilise")
+
+    pwd_hash = hash_password(user_data.password)
+    user = Utilisateur(
+        username = user_data.username,
+        password_hash= pwd_hash
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return user
+
+@app.get('/users', response_model= List[UtilisateurRead])
+async  def get_utilisateurs(connexion : Session = Depends(get_session),
+                            current_user : Utilisateur=Depends(get_curent_user)) :
+    """ retourne tous les utilisateurs """
+
+    utilisateurs = connexion.exec(select(Utilisateur)).all()
+    return utilisateurs
+
+@app.post('/login')
+async def login_fonction(
+        form_donnes : OAuth2PasswordRequestForm = Depends(),
+        session : Session = Depends(get_session)) -> dict :
+    """ Route porteuse pour renvoyer le jwt de l'utilisateur """
+
+    statement = select(Utilisateur).where(
+        Utilisateur.username == form_donnes.username,
+    )
+    user = session.exec(statement).first()
+    password_verifie = verifier_password(
+         password=form_donnes.password,
+        hashed_password=user.password_hash
+    )
+    if not  user or not password_verifie:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=" nom d'utilisateur ou mot de passe invalide ! ",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token = creer_acces_token(
+        donnes= {"sub": str(user.id)},
+        expitation_delta= timedelta(minutes=TOKEN_EXPIRE_MUNITES)
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+
+
+
+
 # @app.delete('/etudiant/{etudiant_id}')
 # async def delete_student(etudiant_id : str) -> dict :
 #     for etudiant in Etudiants :
