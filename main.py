@@ -19,7 +19,8 @@ app = FastAPI(
     version=version_app,
     title=" Students Manager",
     summary=" Gérer les notes et les étudiants ",
-    description=" Une application universitaire de gestion des étudiants "
+    description=" Une application universitaire de gestion des étudiants ",
+    contact= None
     )
 
 app.include_router(routeur_etudiant)

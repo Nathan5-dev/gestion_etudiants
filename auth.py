@@ -1,9 +1,11 @@
 from fastapi.params import Depends
 from passlib.context import CryptContext
-from sqlalchemy.util import deprecated
 from datetime import datetime, timedelta
-from jose import jwt
 from fastapi.security import OAuth2PasswordBearer
+from database import get_session, Utilisateur
+from sqlmodel import Session,select
+from jose import  JWTError, jwt
+from fastapi import HTTPException, status
 
 
 
@@ -42,3 +44,31 @@ def creer_acces_token(
     return jwt_encode
 
 
+erreur = HTTPException(   # erreurs de reference
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=" Token invalide ou expiré ! ",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+## La fonction de dependence pour retourner un utilisateur apres verification de son ID
+def get_curent_user(token : str = Depends(dependence_OAuth2),
+                    session : Session = Depends(get_session)) -> Utilisateur:
+    try:
+        playload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=ALGORITHM
+        )
+        id_utilisaeur : str | None = playload.get("sub")
+        if not id_utilisaeur :
+            raise erreur
+
+    except JWTError :
+        raise erreur
+
+    requete = select(Utilisateur).where(Utilisateur.id == int(id_utilisaeur))
+    user = session.exec(requete).first()
+    if not user:
+        raise erreur
+    return user
+#-------------------------------------------------------

@@ -1,57 +1,44 @@
 
-from fastapi import FastAPI, HTTPException, status, Depends, APIRouter
-from sqlmodel import SQLModel, Session,select
+from fastapi import  HTTPException, status, Depends, APIRouter,Query
+from sqlmodel import  Session,select
 from database import  Etudiants, Notes, get_session, Utilisateur
 from schemas import NoteCreate, NoteRead,EtudiantRead,EtudiantCreate, NoteUpdate, UtilisateurCreate,UtilisateurRead
-
 from typing import List, Optional, Union, Dict
-from  auth import( hash_password, verifier_password, creer_acces_token,
-                   TOKEN_EXPIRE_MUNITES, dependence_OAuth2, SECRET_KEY, ALGORITHM)
+from  auth import hash_password, verifier_password, creer_acces_token, get_curent_user, TOKEN_EXPIRE_MUNITES
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import  timedelta
-from jose import  JWTError, jwt
 
 
-routeur_etudiant = APIRouter(tags=["Étudiants"])
-routeur_notes= APIRouter(tags=["Notes"])
+
+routeur_etudiant = APIRouter(tags=[" Étudiants"])
+routeur_notes= APIRouter(tags=[" Notes"])
 routeur_Utilisateur = APIRouter(tags=[" Utilisateurs "])
 
 
-erreur = HTTPException(   # erreurs de reference
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=" Token invalide ou expiré ! ",
-            headers={"WWW-Authenticate": "Bearer"}
+@routeur_etudiant.get("/etudiants",response_model=List[EtudiantRead])
+async def get_all_students(
+    nom: Optional[str] = Query(
+        default=None,
+        description="Recherche partielle par nom de l'étudiant"
+    ),
+    skip: int = Query(default=0,ge=0,
+            description="Nombre d'étudiants à ignorer"
+        ),
+    limit: int = Query(default=3,ge=1,le=100,
+            description="Nombre maximum d'étudiants à retourner"
+        ),
+    session: Session = Depends(get_session)):
+    """ Une route qui permet de récupérer les étudiants avec recherche par nom """
+
+    statement = select(Etudiants)
+    if nom:
+        statement = statement.where(
+            Etudiants.nom.ilike(f"%{nom}%")
         )
-
-## La fonction de dependence pour retourner un utilisateur apres verification de son ID
-def get_curent_user(token : str = Depends(dependence_OAuth2),
-                    session : Session = Depends(get_session)) -> Utilisateur:
-    try:
-        playload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=ALGORITHM
-        )
-        id_utilisaeur : str | None = playload.get("sub")
-        if not id_utilisaeur :
-            raise erreur
-
-    except JWTError :
-        raise erreur
-
-    requete = select(Utilisateur).where(Utilisateur.id == int(id_utilisaeur))
-    user = session.exec(requete).first()
-    if not user:
-        raise erreur
-    return user
-#-------------------------------------------------------
-
-@routeur_etudiant.get("/etudiants", response_model=List[EtudiantRead])
-async def get_all_students( session : Session = Depends(get_session)):
-    """ Une route qui permet de récupérer tout les étudiants """
-
-    etudiants = session.exec(select(Etudiants)).all()
+    statement = statement.offset(skip).limit(limit)
+    etudiants = session.exec(statement).all()
     return etudiants
+
 
 @routeur_etudiant.get('/etudiant/{etudiant_id}')
 async def get_student(
