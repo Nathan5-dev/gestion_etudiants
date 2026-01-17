@@ -19,8 +19,7 @@ routeur_Utilisateur = APIRouter(tags=[" Utilisateurs "])
 async def get_all_students(
     nom: Optional[str] = Query(
         default=None,
-        description="Recherche partielle par nom de l'étudiant"
-    ),
+        description="Recherche partielle par nom de l'étudiant"),
     skip: int = Query(default=0,ge=0,
             description="Nombre d'étudiants à ignorer"
         ),
