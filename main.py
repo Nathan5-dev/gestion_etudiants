@@ -20,7 +20,7 @@ app = FastAPI(
     title=" Students Manager",
     summary=" Gérer les notes et les étudiants ",
     description=" Une application universitaire de gestion des étudiants ",
-    contact= None
+    contact= {"Github": "https://github.com/Nathan5-dev/gestion_etudiants"}
     )
 
 app.include_router(routeur_etudiant)
